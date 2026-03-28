@@ -1,0 +1,160 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  name         String
+  passwordHash String
+  role         Role          @default(USER)
+  department   String?
+  status       UserStatus    @default(ACTIVE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  ownedParts   Part[]        @relation("PartOwner")
+  lockedFiles  FileAsset[]   @relation("FileLocker")
+  uploadedFiles FileAsset[]  @relation("FileUploader")
+  authoredECNs ChangeOrder[] @relation("ECNAuthor")
+  activityLogs ActivityLog[]
+}
+
+model Part {
+  id            Int           @id @default(autoincrement())
+  partNumber    String        @unique
+  name          String
+  type          PartType      @default(PART)
+  currentRev    String        @default("Rev A")
+  status        PartStatus    @default(DRAFT)
+  material      String?
+  weight        String?
+  cost          String?
+  isLocked      Boolean       @default(false)
+  ownerId       Int
+  owner         User          @relation("PartOwner", fields: [ownerId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  parentBoms    BomItem[]     @relation("BomParent")
+  childBoms     BomItem[]     @relation("BomChild")
+  files         FileAsset[]
+  changeOrders  ChangeOrder[] @relation("ECNTarget")
+  revisions     Revision[]
+}
+
+model BomItem {
+  id           Int      @id @default(autoincrement())
+  parentPartId Int
+  parentPart   Part     @relation("BomParent", fields: [parentPartId], references: [id])
+  childPartId  Int
+  childPart    Part     @relation("BomChild", fields: [childPartId], references: [id])
+  quantity     Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  @@unique([parentPartId, childPartId])
+}
+
+model Revision {
+  id        Int      @id @default(autoincrement())
+  partId    Int
+  part      Part     @relation(fields: [partId], references: [id])
+  revString String   // e.g. "Rev A"
+  pushedBy  String   // System log of who pushed it
+  changes   String   @db.Text // JSON string of diffs or commit message
+  createdAt DateTime @default(now())
+
+  @@unique([partId, revString])
+}
+
+model FileAsset {
+  id        Int      @id @default(autoincrement())
+  partId    Int
+  part      Part     @relation(fields: [partId], references: [id])
+  fileName  String
+  version   String   @default("1.0")
+  sizeBytes Int
+  url       String
+  lockedById Int?
+  lockedBy  User?    @relation("FileLocker", fields: [lockedById], references: [id])
+  uploadedById Int?
+  uploadedBy User?   @relation("FileUploader", fields: [uploadedById], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChangeOrder {
+  id          Int       @id @default(autoincrement())
+  ecnNumber   String    @unique
+  title       String
+  description String    @db.Text
+  rootCause   String?   @db.Text
+  priority    Priority  @default(MEDIUM)
+  status      EcnStatus @default(PENDING)
+
+  targetPartId Int
+  targetPart   Part     @relation("ECNTarget", fields: [targetPartId], references: [id])
+
+  authorId    Int
+  author      User      @relation("ECNAuthor", fields: [authorId], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model ActivityLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  entityType String   // e.g., 'Part', 'ECN'
+  entityId   Int?
+  createdAt  DateTime @default(now())
+}
+
+// ---------------- Enums ----------------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  OFFLINE
+  SUSPENDED
+}
+
+enum PartType {
+  ASSEMBLY
+  PART
+}
+
+enum PartStatus {
+  DRAFT
+  REVIEW
+  RELEASED
+  OBSOLETE
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum EcnStatus {
+  PENDING
+  REVIEW
+  APPROVED
+  REJECTED
+}

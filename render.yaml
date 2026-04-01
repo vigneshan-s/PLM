@@ -1,13 +1,10 @@
 services:
   - type: web
-    name: plm-server
+    name: plm-monorepo
     env: node
-    rootDir: server
     buildCommand: npm run build
     startCommand: npm start
     envVars:
-      - key: PORT
-        value: 4000
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
@@ -16,16 +13,3 @@ services:
         generateValue: true
       - key: SCHEMA_REGISTRY_URL
         sync: false
-
-  - type: web
-    name: plm-client
-    env: static
-    rootDir: client
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_API_URL
-        fromService:
-          type: web
-          name: plm-server
-          property: url

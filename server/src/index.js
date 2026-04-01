@@ -7,10 +7,29 @@ const multipart = require('@fastify/multipart');
 const bcrypt = require('bcryptjs');
 const { prisma } = require('./db');
 const fs = require('fs');
-const path = require('path');
+
 const util = require('util');
 const { pipeline } = require('stream');
 const pump = util.promisify(pipeline);
+const fastifyStatic = require("@fastify/static");
+const path = require("path");
+
+fastify.register(fastifyStatic, {
+    root: path.join(__dirname, "../client/dist"),
+    prefix: "/",
+});
+
+fastify.setNotFoundHandler((request, reply) => {
+    if (request.raw.url.startsWith('/api')) {
+        return reply.code(404).send({
+            success: false,
+            message: 'API route not found'
+        });
+    }
+
+    // SPA fallback
+    return reply.sendFile('index.html');
+});
 
 // --- Plugins ---
 fastify.register(cors, { origin: true, credentials: true });
@@ -269,7 +288,7 @@ fastify.get('/api/admin/system', { preValidation: [fastify.authenticate] }, asyn
 
 const start = async () => {
   try {
-    await fastify.listen({ port: 4000, host: '0.0.0.0' });
+    await fastify.listen({ port: process.env.PORT || 4000, host: '0.0.0.0' });
     fastify.log.info(`Server listening on ${fastify.server.address().port}`);
   } catch (err) {
     fastify.log.error(err);

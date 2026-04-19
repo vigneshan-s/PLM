@@ -19,6 +19,13 @@ fastify.register(fastifyStatic, {
     prefix: "/",
 });
 
+// Serve uploaded files for download
+fastify.register(require('@fastify/static'), {
+    root: path.join(__dirname, '..', 'uploads'),
+    prefix: '/uploads/',
+    decorateReply: false,
+});
+
 fastify.setNotFoundHandler((request, reply) => {
     if (request.raw.url.startsWith('/api')) {
         return reply.code(404).send({
@@ -120,17 +127,33 @@ fastify.get('/api/parts', { preValidation: [fastify.authenticate] }, async (requ
   return await prisma.part.findMany({});
 });
 
-// Recursive BOM fetch (simplified 1-level for brevity, in production use CTEs)
-fastify.get('/api/parts/:id/bom', { preValidation: [fastify.authenticate] }, async (request, reply) => {
-  const rootPart = await prisma.part.findUnique({ where: { id: parseInt(request.params.id) } });
-  if (!rootPart) return reply.code(404).send({ error: 'Part not found' });
-  
-  const children = await prisma.bomItem.findMany({
-    where: { parentPartId: rootPart.id },
+// Recursive BOM fetch — walks the full assembly tree depth-first
+async function buildBomTree(partId, visited = new Set()) {
+  if (visited.has(partId)) return null; // prevent circular refs
+  visited.add(partId);
+
+  const part = await prisma.part.findUnique({ where: { id: partId } });
+  if (!part) return null;
+
+  const bomItems = await prisma.bomItem.findMany({
+    where: { parentPartId: partId },
     include: { childPart: true }
   });
-  
-  return { ...rootPart, children: children.map(c => ({ ...c.childPart, qty: c.quantity })) };
+
+  const children = [];
+  for (const item of bomItems) {
+    const child = await buildBomTree(item.childPartId, visited);
+    if (child) children.push({ ...child, qty: item.quantity });
+  }
+
+  return { ...part, children };
+}
+
+fastify.get('/api/parts/:id/bom', { preValidation: [fastify.authenticate] }, async (request, reply) => {
+  const id = parseInt(request.params.id);
+  const tree = await buildBomTree(id);
+  if (!tree) return reply.code(404).send({ error: 'Part not found' });
+  return tree;
 });
 
 fastify.get('/api/parts/:id/history', { preValidation: [fastify.authenticate] }, async (request, reply) => {
@@ -153,7 +176,7 @@ fastify.post('/api/changes', { preValidation: [fastify.authenticate] }, async (r
       description,
       priority: priority.toUpperCase(),
       status: 'PENDING',
-      createdBy: request.user.id
+      authorId: request.user.id
     },
     include: { targetPart: true }
   });
@@ -265,16 +288,60 @@ fastify.get('/api/files', { preValidation: [fastify.authenticate] }, async (requ
   return await prisma.fileAsset.findMany({ include: { part: true, lockedBy: { select: { name: true } } } });
 });
 
+// Checkout a file (lock it to current user)
+fastify.post('/api/files/:id/checkout', { preValidation: [fastify.authenticate] }, async (request, reply) => {
+  const fileId = parseInt(request.params.id);
+  const file = await prisma.fileAsset.findUnique({ where: { id: fileId } });
+  if (!file) return reply.code(404).send({ error: 'File not found' });
+  if (file.lockedById) return reply.code(409).send({ error: 'File is already checked out' });
+
+  const updated = await prisma.fileAsset.update({
+    where: { id: fileId },
+    data: { lockedById: request.user.id },
+    include: { part: true, lockedBy: { select: { name: true } } }
+  });
+  await prisma.activityLog.create({
+    data: { userId: request.user.id, action: `Checked out file ${file.fileName}`, entityType: 'FileAsset', entityId: fileId }
+  });
+  return updated;
+});
+
+// Checkin a file (unlock it)
+fastify.post('/api/files/:id/checkin', { preValidation: [fastify.authenticate] }, async (request, reply) => {
+  const fileId = parseInt(request.params.id);
+  const file = await prisma.fileAsset.findUnique({ where: { id: fileId } });
+  if (!file) return reply.code(404).send({ error: 'File not found' });
+  if (!file.lockedById) return reply.code(409).send({ error: 'File is not checked out' });
+  if (file.lockedById !== request.user.id && request.user.role !== 'ADMIN') {
+    return reply.code(403).send({ error: 'You can only check in files you checked out' });
+  }
+
+  const updated = await prisma.fileAsset.update({
+    where: { id: fileId },
+    data: { lockedById: null },
+    include: { part: true, lockedBy: { select: { name: true } } }
+  });
+  await prisma.activityLog.create({
+    data: { userId: request.user.id, action: `Checked in file ${file.fileName}`, entityType: 'FileAsset', entityId: fileId }
+  });
+  return updated;
+});
+
 fastify.get('/api/impact/:partId', { preValidation: [fastify.authenticate] }, async (request, reply) => {
-  // Simple where-used dependency mapping logic
-  const part = await prisma.part.findUnique({ where: { id: parseInt(request.params.partId) }, include: { parentBoms: { include: { parentPart: true } } } });
-  if (!part) return reply.code(404).send({ error: "Part not found" });
-  
-  // Transform into AI Insight format
+  const part = await prisma.part.findUnique({
+    where: { id: parseInt(request.params.partId) },
+    include: { parentBoms: { include: { parentPart: true } } }
+  });
+  if (!part) return reply.code(404).send({ error: 'Part not found' });
+
   const insights = part.parentBoms.map(b => ({
-    id: b.id, risk: b.parentPart.status === 'RELEASED' ? 'high' : 'low',
-    msg: `Will invalidate "${b.parentPart.partNumber}" (${b.parentPart.name}) which is actively in ${b.parentPart.status}.`
+    id: b.id,
+    partNumber: b.parentPart.partNumber,
+    partName: b.parentPart.name,
+    risk: b.parentPart.status === 'RELEASED' ? 'high' : b.parentPart.status === 'REVIEW' ? 'medium' : 'low',
+    msg: `Will invalidate "${b.parentPart.partNumber}" (${b.parentPart.name}) which is actively in ${b.parentPart.status} status.`
   }));
+
   return { part, insights };
 });
 

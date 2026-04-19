@@ -1,0 +1,2 @@
+# This file keeps the uploads/ directory in git while ignoring actual uploaded files.
+# See root .gitignore: server/uploads/*

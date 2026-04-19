@@ -166,6 +166,28 @@ export const useAppStore = create((set) => ({
     }
   },
 
+  checkoutFile: async (fileId) => {
+    try {
+      const res = await api.post(`/files/${fileId}/checkout`);
+      const filesRes = await api.get('/files');
+      set({ files: filesRes.data });
+      return { success: true, data: res.data };
+    } catch (e) {
+      return { success: false, error: e.response?.data?.error || e.message };
+    }
+  },
+
+  checkinFile: async (fileId) => {
+    try {
+      const res = await api.post(`/files/${fileId}/checkin`);
+      const filesRes = await api.get('/files');
+      set({ files: filesRes.data });
+      return { success: true, data: res.data };
+    } catch (e) {
+      return { success: false, error: e.response?.data?.error || e.message };
+    }
+  },
+
   fetchRevisions: async (partId) => {
     set({ isLoading: true });
     try {

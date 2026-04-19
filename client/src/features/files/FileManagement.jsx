@@ -1,37 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import AppShell from '../../components/layout/AppShell';
 import SlideOver from '../../components/ui/SlideOver';
-import { UploadCloud, File as FileIcon, Search, Filter, MoreHorizontal, FileText, Settings, Download, Lock, Loader } from 'lucide-react';
+import { UploadCloud, File as FileIcon, Search, Filter, MoreHorizontal, FileText, Settings, Download, Lock, Loader, Unlock } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { useAppStore } from '../../store';
+import { useAuthStore } from '../../store';
 import toast from 'react-hot-toast';
 
 export default function FileManagement() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [targetPart, setTargetPart] = useState('');
   const [uploading, setUploading] = useState(false);
-  const { fetchFiles, files, isLoading, partsList, fetchPartsList, uploadFile } = useAppStore();
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const { fetchFiles, files, isLoading, partsList, fetchPartsList, uploadFile, checkoutFile, checkinFile } = useAppStore();
+  const user = useAuthStore(s => s.user);
 
   useEffect(() => {
     fetchFiles();
     fetchPartsList();
   }, [fetchFiles, fetchPartsList]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop: async (acceptedFiles) => {
       if (!targetPart) return toast.error('Please select a Target Component first!');
       if (!acceptedFiles.length) return;
-      
+
       const file = acceptedFiles[0];
       const formData = new FormData();
       formData.append('file', file);
       formData.append('partId', targetPart);
-      
+
       setUploading(true);
       const toastId = toast.loading(`Uploading ${file.name}...`);
-      
+
       const res = await uploadFile(formData);
-      
+
       setUploading(false);
       if (res.success) {
         toast.success('File uploaded and linked successfully!', { id: toastId });
@@ -42,6 +47,55 @@ export default function FileManagement() {
     }
   });
 
+  // Real download using server-served /uploads/ route
+  const handleDownload = (file) => {
+    const baseURL = import.meta.env.DEV ? 'http://localhost:4000' : '';
+    const url = `${baseURL}${file.url}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = file.fileName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Downloading ${file.fileName}`);
+  };
+
+  const handleCheckout = async () => {
+    if (!selectedFile) return;
+    setCheckingOut(true);
+    const res = await checkoutFile(selectedFile.id);
+    setCheckingOut(false);
+    if (res.success) {
+      toast.success(`"${selectedFile.fileName}" checked out to you.`);
+      setSelectedFile(res.data); // update slide with fresh data
+    } else {
+      toast.error(res.error || 'Checkout failed');
+    }
+  };
+
+  const handleCheckin = async () => {
+    if (!selectedFile) return;
+    setCheckingOut(true);
+    const res = await checkinFile(selectedFile.id);
+    setCheckingOut(false);
+    if (res.success) {
+      toast.success(`"${selectedFile.fileName}" checked back in.`);
+      setSelectedFile(res.data);
+    } else {
+      toast.error(res.error || 'Check-in failed');
+    }
+  };
+
+  const filteredFiles = files?.filter(f =>
+    !searchQuery ||
+    f.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    f.part?.partNumber.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const isMyCheckout = selectedFile?.lockedById === user?.id;
+  const isCheckedOut = !!selectedFile?.lockedById;
+
   return (
     <AppShell title="Files & Assets">
       <div className="page-header" style={{ marginBottom: 24 }}>
@@ -49,7 +103,15 @@ export default function FileManagement() {
           <h1 className="heading-1">Document Vault</h1>
           <p className="text-subtle">Secure CAD, drawings, and spec-sheet management.</p>
         </div>
-        <button className="btn btn-primary"><UploadCloud size={16} /> Upload New File</button>
+        <button className="btn btn-primary" onClick={() => {
+          if (!targetPart) {
+            toast.error('Please select a Target Component first!');
+            return;
+          }
+          open();
+        }}>
+          <UploadCloud size={16} /> Upload New File
+        </button>
       </div>
 
       <div className="flex-start mb-4" style={{ gap: 12 }}>
@@ -75,11 +137,18 @@ export default function FileManagement() {
         <div className="flex-between" style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)' }}>
           <div className="search-bar" style={{ width: 300, background: 'var(--bg-app)' }}>
             <Search className="search-icon" />
-            <input type="text" placeholder="Search by file name or part..." />
+            <input
+              type="text"
+              placeholder="Search by file name or part..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
           </div>
-          <button className="btn btn-secondary"><Filter size={16} /> Filters</button>
+          <button className="btn btn-secondary" onClick={() => setSearchQuery('')}>
+            <Filter size={16} /> {searchQuery ? 'Clear Filter' : 'Filters'}
+          </button>
         </div>
-        
+
         <div className="data-table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
           <table className="data-table">
             <thead>
@@ -95,13 +164,15 @@ export default function FileManagement() {
             <tbody>
               {isLoading ? (
                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>Loading Document Vault from Database...</td></tr>
-              ) : files?.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>Vault is empty. Upload CAD files to begin.</td></tr>
-              ) : files?.map(f => (
+              ) : filteredFiles?.length === 0 ? (
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>
+                  {searchQuery ? 'No files match your search.' : 'Vault is empty. Upload CAD files to begin.'}
+                </td></tr>
+              ) : filteredFiles?.map(f => (
                 <tr key={f.id} className="data-table-row-hoverable" onClick={() => setSelectedFile(f)}>
                   <td>
                     <div className="flex-start" style={{ gap: 12 }}>
-                      <FileIcon size={16} color={f.fileName.endsWith('pdf') ? '#ef4444' : '#3b82f6'} />
+                      <FileIcon size={16} color={f.fileName.endsWith('.pdf') ? '#ef4444' : '#3b82f6'} />
                       <span style={{ fontWeight: 600 }}>{f.fileName}</span>
                       {f.lockedById && <Lock size={12} color="var(--warning)" />}
                     </div>
@@ -110,7 +181,11 @@ export default function FileManagement() {
                   <td><span className="badge badge-outline">v{f.version}</span></td>
                   <td><span className={`badge ${f.lockedById ? 'badge-amber' : 'badge-green'}`}>{f.lockedById ? 'Checked Out' : 'Available'}</span></td>
                   <td className="text-subtle">{(f.sizeBytes / 1024 / 1024).toFixed(1)} MB</td>
-                  <td><button className="icon-btn" onClick={(e) => { e.stopPropagation(); setSelectedFile(f); }}><MoreHorizontal size={16} /></button></td>
+                  <td>
+                    <button className="icon-btn" onClick={(e) => { e.stopPropagation(); handleDownload(f); }} title="Download">
+                      <Download size={16} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -118,13 +193,14 @@ export default function FileManagement() {
         </div>
       </div>
 
-      <SlideOver 
-        isOpen={!!selectedFile} 
+      <SlideOver
+        isOpen={!!selectedFile}
         onClose={() => setSelectedFile(null)}
         title={selectedFile?.fileName}
       >
         {selectedFile && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* File Header */}
             <div className="paper bg-app" style={{ border: 'none', display: 'flex', gap: 16, alignItems: 'center', padding: 20 }}>
               <div style={{ width: 48, height: 48, borderRadius: 8, background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <FileText size={24} color="var(--text-secondary)" />
@@ -139,32 +215,70 @@ export default function FileManagement() {
               </div>
             </div>
 
+            {/* Actions */}
             <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn btn-primary" style={{ flex: 1 }}><Download size={16} /> Download</button>
-              {selectedFile.lockedById ? (
-                <button className="btn btn-secondary" disabled style={{ flex: 1, opacity: 0.5 }}><Lock size={16} /> Checked out by {selectedFile.lockedBy?.name || 'User'}</button>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+                onClick={() => handleDownload(selectedFile)}
+              >
+                <Download size={16} /> Download
+              </button>
+
+              {isCheckedOut ? (
+                isMyCheckout ? (
+                  <button
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={handleCheckin}
+                    disabled={checkingOut}
+                  >
+                    {checkingOut ? <Loader size={14} className="animate-spin" /> : <Unlock size={16} />}
+                    {checkingOut ? 'Checking In...' : 'Check In'}
+                  </button>
+                ) : (
+                  <button className="btn btn-secondary" disabled style={{ flex: 1, opacity: 0.5 }}>
+                    <Lock size={16} /> Locked by {selectedFile.lockedBy?.name || 'User'}
+                  </button>
+                )
               ) : (
-                <button className="btn btn-secondary" style={{ flex: 1 }}><Settings size={16} /> Check Out</button>
+                <button
+                  className="btn btn-secondary"
+                  style={{ flex: 1 }}
+                  onClick={handleCheckout}
+                  disabled={checkingOut}
+                >
+                  {checkingOut ? <Loader size={14} className="animate-spin" /> : <Settings size={16} />}
+                  {checkingOut ? 'Checking Out...' : 'Check Out'}
+                </button>
               )}
             </div>
 
+            {/* Version History */}
             <div style={{ padding: 20, border: '1px solid var(--border)', borderRadius: 'var(--radius-md)' }}>
               <h4 className="heading-3 mb-4">Version History</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {[...Array(parseInt(selectedFile.version))].map((_, i, arr) => {
+                {[...Array(parseInt(selectedFile.version) || 1)].map((_, i, arr) => {
                   const ver = arr.length - i;
+                  const isCurrent = ver === arr.length;
                   return (
                     <div key={i} className="flex-between">
                       <div className="flex-start" style={{ gap: 12 }}>
-                        <span className="badge badge-outline">v{ver}.0</span>
+                        <span className={`badge ${isCurrent ? 'badge-green' : 'badge-outline'}`}>v{ver}.0</span>
                         <div>
-                          <p style={{ fontSize: 12, fontWeight: 600 }}>{ver === arr.length ? 'Current Version' : 'Previous baseline'}</p>
-                          <p className="text-subtle text-mono" style={{ fontSize: 10 }}>2026-03-{28-i} by System</p>
+                          <p style={{ fontSize: 12, fontWeight: 600 }}>{isCurrent ? 'Current Version' : 'Previous baseline'}</p>
+                          <p className="text-subtle text-mono" style={{ fontSize: 10 }}>2026-03-{28 - i} by System</p>
                         </div>
                       </div>
-                      <button className="icon-btn"><Download size={14} /></button>
+                      <button
+                        className="icon-btn"
+                        title="Download this version"
+                        onClick={() => handleDownload({ url: selectedFile.url, fileName: `v${ver}_${selectedFile.fileName}` })}
+                      >
+                        <Download size={14} />
+                      </button>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </div>

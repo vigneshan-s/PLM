@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppShell from '../../components/layout/AppShell';
 import { Package, GitBranch, ShieldAlert, Zap, TrendingUp, MoreHorizontal, MousePointerClick, TrendingDown } from 'lucide-react';
 import { useAppStore, useAuthStore } from '../../store';
@@ -11,6 +12,7 @@ function TimeAgo({ dateStr }) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
   const { fetchDashboardData, dashboard, isLoading } = useAppStore();
 
@@ -32,8 +34,8 @@ export default function Dashboard() {
           <p>Here’s what’s happening in your engineering workspace today.</p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <button className="btn btn-secondary"><MousePointerClick size={14} /> Quick Create</button>
-          <button className="btn btn-primary"><Zap size={14} /> Raise Change Order</button>
+          <button className="btn btn-secondary" onClick={() => navigate('/files')}><MousePointerClick size={14} /> Quick Create</button>
+          <button className="btn btn-primary" onClick={() => navigate('/ecn')}><Zap size={14} /> Raise Change Order</button>
         </div>
       </div>
 

@@ -39,7 +39,12 @@ fastify.setNotFoundHandler((request, reply) => {
 });
 
 // --- Plugins ---
-fastify.register(cors, { origin: true, credentials: true });
+fastify.register(cors, { 
+  origin: true, 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Origin', 'Content-Type', 'Accept', 'Authorization', 'X-Requested-With']
+});
 fastify.register(cookie, { secret: process.env.COOKIE_SECRET || "super-secret", hook: 'onRequest' });
 fastify.register(jwt, { secret: process.env.JWT_SECRET || 'super-jwt-key' });
 fastify.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
@@ -214,8 +219,17 @@ fastify.post('/api/changes/:id/release', { preValidation: [fastify.authenticate]
   const order = await prisma.changeOrder.findUnique({ where: { ecnNumber: request.params.id } });
   if (!order) return reply.code(404).send({ error: 'Not found' });
   
+  const targetPart = await prisma.part.findUnique({ where: { id: order.targetPartId } });
+  let nextRev = targetPart.currentRev || 'Rev A';
+  if (nextRev.startsWith('Rev ')) {
+    const letter = nextRev.split(' ')[1];
+    nextRev = `Rev ${String.fromCharCode(letter.charCodeAt(0) + 1)}`;
+  } else {
+    nextRev = `${nextRev}-1`;
+  }
+  
   const updatedPart = await prisma.part.update({
-    where: { id: order.targetPartId }, data: { status: 'RELEASED', isLocked: true }
+    where: { id: order.targetPartId }, data: { status: 'RELEASED', isLocked: true, currentRev: nextRev }
   });
   
   await prisma.revision.create({
@@ -364,3 +378,4 @@ const start = async () => {
 };
 
 start();
+// trigger restart 3

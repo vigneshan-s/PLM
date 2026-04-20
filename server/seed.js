@@ -22,16 +22,16 @@ async function seed() {
 
   // 2. Seed sample parts
   const parts = [
-    { partNumber: 'ASM-001', name: 'Main Chassis Assembly',   type: 'ASSEMBLY', currentRev: 'Rev A', status: 'RELEASED',  material: 'Aluminium 6061', weight: '12.4 kg', cost: '$340' },
-    { partNumber: 'PRT-010', name: 'Drive Shaft',             type: 'PART',     currentRev: 'Rev B', status: 'RELEASED',  material: 'Steel 4140',     weight: '1.8 kg',  cost: '$85'  },
-    { partNumber: 'PRT-011', name: 'Bearing Housing',         type: 'PART',     currentRev: 'Rev A', status: 'REVIEW',    material: 'Cast Iron',      weight: '0.9 kg',  cost: '$42'  },
-    { partNumber: 'PRT-012', name: 'Control PCB',             type: 'PART',     currentRev: 'Rev C', status: 'RELEASED',  material: 'FR4',            weight: '0.1 kg',  cost: '$120' },
-    { partNumber: 'ASM-002', name: 'Cooling Module Assembly', type: 'ASSEMBLY', currentRev: 'Rev A', status: 'DRAFT',     material: 'Copper/Al',      weight: '3.2 kg',  cost: '$210' },
-    { partNumber: 'PRT-020', name: 'Heat Sink',               type: 'PART',     currentRev: 'Rev A', status: 'RELEASED',  material: 'Aluminium 1060', weight: '0.6 kg',  cost: '$28'  },
-    { partNumber: 'PRT-021', name: 'Fan Unit 80mm',           type: 'PART',     currentRev: 'Rev B', status: 'RELEASED',  material: 'ABS/Copper',     weight: '0.2 kg',  cost: '$15'  },
-    { partNumber: 'PRT-030', name: 'Power Supply Unit',       type: 'PART',     currentRev: 'Rev D', status: 'RELEASED',  material: 'Steel/PCB',      weight: '1.1 kg',  cost: '$95'  },
-    { partNumber: 'PRT-031', name: 'Battery Pack 48V',        type: 'PART',     currentRev: 'Rev A', status: 'REVIEW',    material: 'Li-Ion',         weight: '4.5 kg',  cost: '$450' },
-    { partNumber: 'ASM-003', name: 'Sensor Array Module',     type: 'ASSEMBLY', currentRev: 'Rev B', status: 'DRAFT',     material: 'Mixed',          weight: '0.8 kg',  cost: '$310' },
+    { partNumber: 'BV-ASM-001-A', name: 'Bench Vice Assembly', type: 'ASSEMBLY', currentRev: 'Rev A', status: 'RELEASED', material: 'Cast Iron/Steel', weight: '8.5 kg', cost: '$120' },
+    { partNumber: 'BV-BAS-001-A', name: 'Base',                type: 'PART',     currentRev: 'Rev A', status: 'RELEASED', material: 'Cast Iron',     weight: '4.2 kg', cost: '$45'  },
+    { partNumber: 'BV-BPL-001-A', name: 'Base Plate',          type: 'PART',     currentRev: 'Rev A', status: 'RELEASED', material: 'Cast Iron',     weight: '1.1 kg', cost: '$15'  },
+    { partNumber: 'BV-JAW-001-A', name: 'Vice Jaw',            type: 'ASSEMBLY', currentRev: 'Rev A', status: 'RELEASED', material: 'Mixed',         weight: '2.1 kg', cost: '$35'  },
+    { partNumber: 'BV-JAW-002-A', name: 'Bar Gloves',          type: 'PART',     currentRev: 'Rev A', status: 'RELEASED', material: 'Rubber',        weight: '0.1 kg', cost: '$5'   },
+    { partNumber: 'BV-JSC-001-A', name: 'Jaw Screw',           type: 'PART',     currentRev: 'Rev A', status: 'RELEASED', material: 'Steel 4140',    weight: '0.3 kg', cost: '$10'  },
+    { partNumber: 'BV-SCR-001-A', name: 'Lead Screw',          type: 'ASSEMBLY', currentRev: 'Rev A', status: 'RELEASED', material: 'Steel 4140',    weight: '0.6 kg', cost: '$18'  },
+    { partNumber: 'BV-HND-001-A', name: 'Handle Rod',          type: 'PART',     currentRev: 'Rev A', status: 'RELEASED', material: 'Steel 4140',    weight: '0.4 kg', cost: '$12'  },
+    { partNumber: 'BV-CLP-001-A', name: 'Clamping Plate',      type: 'PART',     currentRev: 'Rev A', status: 'RELEASED', material: 'Cast Iron',     weight: '0.5 kg', cost: '$8'   },
+    { partNumber: 'BV-FST-001-A', name: 'Fixing Screw',        type: 'PART',     currentRev: 'Rev A', status: 'RELEASED', material: 'Stainless',     weight: '0.1 kg', cost: '$2'   },
   ];
 
   for (const part of parts) {

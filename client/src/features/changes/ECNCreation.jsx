@@ -70,7 +70,7 @@ export default function ECNCreation() {
                   <select className="field-input text-mono" value={partId} onChange={e => setPartId(e.target.value)} style={{ paddingRight: 32, appearance: 'none' }}>
                     <option value="">-- Select a Part from Vault --</option>
                     {partsList.map(p => (
-                      <option key={p.id} value={p.id}>{p.partNumber} - {p.name}</option>
+                      <option key={p.id} value={p.id}>{p.partNumber} ({p.name})</option>
                     ))}
                   </select>
                   <Link size={14} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />

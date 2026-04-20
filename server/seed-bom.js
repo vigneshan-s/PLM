@@ -5,27 +5,27 @@ async function seedBom() {
   console.log('🌱 Seeding BOM structure...');
 
   // BOM Structure:
-  // ASM-001 (Main Chassis Assembly) [id:1]
-  //   ├── PRT-010  Drive Shaft         [id:2]  qty:1
-  //   ├── PRT-011  Bearing Housing     [id:3]  qty:4
-  //   ├── PRT-012  Control PCB         [id:4]  qty:1
-  //   └── ASM-002  Cooling Module      [id:5]  qty:1
-  //         ├── PRT-020  Heat Sink     [id:6]  qty:2
-  //         └── PRT-021  Fan Unit 80mm [id:7]  qty:1
-  //
-  // ASM-003 (Sensor Array Module) [id:10]
-  //   ├── PRT-030  Power Supply Unit   [id:8]  qty:1
-  //   └── PRT-031  Battery Pack 48V   [id:9]  qty:1
+  // BV-ASM-001-A (Bench Vice Assembly) [id:1]
+  //   ├── BV-BAS-001-A Base             [id:2] qty:1
+  //   ├── BV-BPL-001-A Base Plate       [id:3] qty:1
+  //   ├── BV-JAW-001-A Vice Jaw         [id:4] qty:1
+  //   │   ├── BV-JAW-002-A Bar Gloves   [id:5] qty:2
+  //   │   └── BV-JSC-001-A Jaw Screw    [id:6] qty:2
+  //   ├── BV-SCR-001-A Lead Screw       [id:7] qty:1
+  //   │   └── BV-HND-001-A Handle Rod   [id:8] qty:1
+  //   ├── BV-CLP-001-A Clamping Plate   [id:9] qty:1
+  //   └── BV-FST-001-A Fixing Screw     [id:10] qty:4
 
   const boms = [
-    { parentPartId: 1, childPartId: 2, quantity: 1 },  // ASM-001 → Drive Shaft
-    { parentPartId: 1, childPartId: 3, quantity: 4 },  // ASM-001 → Bearing Housing x4
-    { parentPartId: 1, childPartId: 4, quantity: 1 },  // ASM-001 → Control PCB
-    { parentPartId: 1, childPartId: 5, quantity: 1 },  // ASM-001 → Cooling Module
-    { parentPartId: 5, childPartId: 6, quantity: 2 },  // Cooling Module → Heat Sink x2
-    { parentPartId: 5, childPartId: 7, quantity: 1 },  // Cooling Module → Fan Unit
-    { parentPartId: 10, childPartId: 8, quantity: 1 }, // ASM-003 → Power Supply
-    { parentPartId: 10, childPartId: 9, quantity: 1 }, // ASM-003 → Battery Pack
+    { parentPartId: 1, childPartId: 2, quantity: 1 }, 
+    { parentPartId: 1, childPartId: 3, quantity: 1 }, 
+    { parentPartId: 1, childPartId: 4, quantity: 1 }, 
+    { parentPartId: 4, childPartId: 5, quantity: 2 }, 
+    { parentPartId: 4, childPartId: 6, quantity: 2 }, 
+    { parentPartId: 1, childPartId: 7, quantity: 1 }, 
+    { parentPartId: 7, childPartId: 8, quantity: 1 }, 
+    { parentPartId: 1, childPartId: 9, quantity: 1 }, 
+    { parentPartId: 1, childPartId: 10, quantity: 4 },
   ];
 
   for (const bom of boms) {

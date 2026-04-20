@@ -215,4 +215,18 @@ export const useAppStore = create((set) => ({
   }
 }));
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401 && !error.config.url.includes('/auth/login')) {
+      useAuthStore.getState().logout().then(() => {
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      });
+    }
+    return Promise.reject(error);
+  }
+);
+
 export { api };

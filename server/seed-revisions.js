@@ -7,21 +7,18 @@ async function seedRevisions() {
   const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
   if (!admin) { console.error('No admin user found. Run seed.js first.'); return; }
 
-  // Revisions for ASM-001 (id:1) - Main Chassis Assembly
+  // Revisions for BV-ASM-001-A (id:1)
   const revs = [
-    { partId: 1, revString: 'Rev A', pushedBy: admin.name, changes: 'Initial release. Base material set to Aluminium 6061-T6. Wall thickness 4mm.' },
-    { partId: 2, revString: 'Rev A', pushedBy: admin.name, changes: 'Initial design. Drive shaft diameter 32mm, length 480mm.' },
-    { partId: 2, revString: 'Rev B', pushedBy: admin.name, changes: 'Increased shaft diameter to 35mm to handle higher torque loads. Surface finish Ra 0.8.' },
-    { partId: 3, revString: 'Rev A', pushedBy: admin.name, changes: 'Bearing housing initial release. Cast Iron grade GG25. Bore tolerance H7.' },
-    { partId: 4, revString: 'Rev A', pushedBy: admin.name, changes: 'PCB first spin. 4-layer FR4, 1oz copper. MCU: STM32F407.' },
-    { partId: 4, revString: 'Rev B', pushedBy: admin.name, changes: 'Added bypass capacitors on VDD rails. Fixed silkscreen errors on J3 connector.' },
-    { partId: 4, revString: 'Rev C', pushedBy: admin.name, changes: 'Migrated to STM32H743 for higher compute. Expanded flash to 2MB. Updated BOM.' },
-    { partId: 5, revString: 'Rev A', pushedBy: admin.name, changes: 'Cooling module initial draft. Aluminium extrusion baseplate 120x80mm.' },
-    { partId: 6, revString: 'Rev A', pushedBy: admin.name, changes: 'Heat sink fin design. 24 fins, 2mm pitch, 30mm height. Thermal resistance 0.8 C/W.' },
-    { partId: 7, revString: 'Rev A', pushedBy: admin.name, changes: 'Fan unit 80x80x25mm, 2000 RPM, dual ball bearing.' },
-    { partId: 7, revString: 'Rev B', pushedBy: admin.name, changes: 'Upgraded to PWM-controlled fan. Added tachometer feedback wire.' },
-    { partId: 10, revString: 'Rev A', pushedBy: admin.name, changes: 'Sensor array initial layout. IMU + LIDAR + Ultrasonic grouped on common I2C bus.' },
-    { partId: 10, revString: 'Rev B', pushedBy: admin.name, changes: 'Isolated LIDAR on separate SPI bus to reduce latency. Added ESD protection.' },
+    { partId: 1, revString: 'Rev A', pushedBy: admin.name, changes: 'Initial release. Full Bench Vice structure base-lined.' },
+    { partId: 2, revString: 'Rev A', pushedBy: admin.name, changes: 'Initial design for Base. Cast iron poured.' },
+    { partId: 3, revString: 'Rev A', pushedBy: admin.name, changes: 'Initial design for Base Plate. Defined 4 mounting holes.' },
+    { partId: 4, revString: 'Rev A', pushedBy: admin.name, changes: 'Vice Jaw assembly designed for parallel clamping.' },
+    { partId: 5, revString: 'Rev A', pushedBy: admin.name, changes: 'Rubber Bar Gloves specified to protect workpieces.' },
+    { partId: 6, revString: 'Rev A', pushedBy: admin.name, changes: 'Jaw Screws tolerance set.' },
+    { partId: 7, revString: 'Rev A', pushedBy: admin.name, changes: 'Lead Screw threaded.' },
+    { partId: 8, revString: 'Rev A', pushedBy: admin.name, changes: 'Handle Rod specified with 4140 Steel for high stress.' },
+    { partId: 9, revString: 'Rev A', pushedBy: admin.name, changes: 'Clamping Plate initial draft.' },
+    { partId: 10, revString: 'Rev A', pushedBy: admin.name, changes: 'Fixing screw dimensions tightened due to clearance limits.' },
   ];
 
   for (const rev of revs) {

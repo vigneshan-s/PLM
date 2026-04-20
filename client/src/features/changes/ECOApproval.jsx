@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import AppShell from '../../components/layout/AppShell';
-import { Settings, MessageSquare, User, Paperclip } from 'lucide-react';
-import { useAppStore } from '../../store';
+import { Settings, MessageSquare, User, Paperclip, Lock } from 'lucide-react';
+import { useAppStore, useAuthStore } from '../../store';
 
 const priColor = { CRITICAL:'bg-red-100 text-red-700', HIGH:'bg-amber-100 text-amber-700', MEDIUM:'bg-blue-100 text-blue-700', LOW:'bg-slate-100 text-slate-700' };
 
 export default function ECOApproval() {
   const { fetchKanban, kanbanData, updateKanbanStatus, isLoading } = useAppStore();
+  const user = useAuthStore(s => s.user);
+  const isAdmin = user?.role === 'ADMIN';
 
   useEffect(() => {
     fetchKanban();
@@ -27,10 +29,10 @@ export default function ECOApproval() {
     <AppShell title="Change Workflows">
       <div className="page-header" style={{ marginBottom: 24 }}>
         <div>
-          <h1 className="heading-1">ECO Approvals</h1>
-          <p className="text-subtle">Review Engineering Change Orders across the approval lifecycle.</p>
+          <h1 className="heading-1 flex-start" style={{ gap: 12 }}>ECO Approvals {!isAdmin && <Lock size={18} color="var(--warning)" />}</h1>
+          <p className="text-subtle mt-1">{isAdmin ? 'Review Engineering Change Orders across the approval lifecycle.' : 'Read-only view of Engineering Change Orders.'}</p>
         </div>
-        <button className="btn btn-secondary"><Settings size={16} /> Board Config</button>
+        {isAdmin && <button className="btn btn-secondary"><Settings size={16} /> Board Config</button>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, minHeight: 600 }}>
@@ -48,9 +50,9 @@ export default function ECOApproval() {
             {(cols[k] || []).map(Card => (
               <div 
                 key={Card.id} 
-                draggable 
-                onDragStart={(e) => handleDragStart(e, Card.id, k)}
-                className="paper paper-hoverable" style={{ padding: 16, cursor: 'grab' }}
+                draggable={isAdmin} 
+                onDragStart={(e) => isAdmin && handleDragStart(e, Card.id, k)}
+                className="paper paper-hoverable" style={{ padding: 16, cursor: isAdmin ? 'grab' : 'default', opacity: isAdmin ? 1 : 0.95 }}
               >
                 <div className="flex-between mb-4">
                   <span className="text-mono" style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary-dark)' }}>{Card.id}</span>
@@ -72,7 +74,7 @@ export default function ECOApproval() {
             
             {(!cols[k] || !cols[k].length) && (
               <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 12, border: '2px dashed var(--border)', borderRadius: 'var(--radius-sm)' }}>
-                {isLoading ? 'Loading...' : 'Drop items here'}
+                {isLoading ? 'Loading...' : (isAdmin ? 'Drop items here' : 'No items')}
               </div>
             )}
           </div>

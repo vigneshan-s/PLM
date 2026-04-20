@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import AppShell from '../../components/layout/AppShell';
-import { Shield, Users, Database, LayoutGrid, Key, Settings, AlertTriangle, UserCheck, HardDrive } from 'lucide-react';
+import { Shield, Users, Database, LayoutGrid, Key, Settings, AlertTriangle, UserCheck, HardDrive, CheckCircle, XCircle } from 'lucide-react';
 import { useAppStore, useAuthStore } from '../../store';
 import { Navigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 function StatCard({ title, val, icon: Icon, color }) {
   return (
@@ -22,11 +23,13 @@ function StatCard({ title, val, icon: Icon, color }) {
 
 export default function AdminPanel() {
   const user = useAuthStore(s => s.user);
-  const { fetchAdminData, adminData, isLoading } = useAppStore();
+  const { fetchAdminData, adminData, fetchKanban, kanbanData, updateKanbanStatus, releasePart, isLoading } = useAppStore();
+  const [activeTab, setActiveTab] = useState('users');
 
   useEffect(() => {
     fetchAdminData();
-  }, [fetchAdminData]);
+    fetchKanban();
+  }, [fetchAdminData, fetchKanban]);
 
   if (user?.role !== 'ADMIN') {
     return (
@@ -63,6 +66,12 @@ export default function AdminPanel() {
             <StatCard title="DB Storage" val="4.2 GB" icon={Database} color="#8b5cf6" />
           </div>
 
+          <div style={{ display: 'flex', gap: 12, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+            <button className={`btn ${activeTab === 'users' ? 'btn-primary' : 'btn-secondary'}`} style={activeTab === 'users' ? { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 } : {}} onClick={() => setActiveTab('users')}>Access Management</button>
+            <button className={`btn ${activeTab === 'approvals' ? 'btn-primary' : 'btn-secondary'}`} style={activeTab === 'approvals' ? { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 } : {}} onClick={() => setActiveTab('approvals')}>ECN Approvals Queue</button>
+          </div>
+
+          {activeTab === 'users' ? (
           <div className="paper p-0">
             <div className="paper-header flex-between">
               <h3 className="heading-3">Access Management</h3>
@@ -110,6 +119,78 @@ export default function AdminPanel() {
               </table>
             </div>
           </div>
+          ) : (
+          <div className="paper p-0">
+            <div className="paper-header flex-between">
+              <h3 className="heading-3">Pending ECN Approvals</h3>
+              <span className="badge badge-amber">{((kanbanData?.pending?.length || 0) + (kanbanData?.review?.length || 0))} Awaiting Action</span>
+            </div>
+            <div className="data-table-wrapper" style={{ border: 'none' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>ECN Number</th>
+                    <th>Target Part</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Description</th>
+                    <th style={{ textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...(kanbanData?.pending || []), ...(kanbanData?.review || [])].map(ecn => (
+                    <tr key={ecn.id} className="data-table-row-hoverable">
+                      <td style={{ fontWeight: 600 }} className="text-primary-dark">{ecn.id}</td>
+                      <td className="text-mono">{ecn.p} <span className="text-subtle ml-1">({ecn.r})</span></td>
+                      <td>
+                        <span className="badge badge-outline" style={{ background: ecn.pri === 'CRITICAL' ? 'var(--danger-100)' : ecn.pri === 'HIGH' ? 'var(--warning-100)' : 'var(--bg-hover)', border: 'none' }}>
+                          {ecn.pri}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="badge badge-amber">
+                          {kanbanData?.pending?.find(x=>x.id===ecn.id) ? 'PENDING' : 'REVIEW'}
+                        </span>
+                      </td>
+                      <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="text-subtle">{ecn.msg}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div className="flex-end" style={{ gap: 8 }}>
+                          <button 
+                            className="icon-btn text-success cursor-pointer" 
+                            title="Approve" 
+                            onClick={async () => {
+                              const tId = toast.loading('Approving change order...');
+                              await updateKanbanStatus(ecn.id, 'approved');
+                              await releasePart(ecn.id);
+                              toast.success(`${ecn.id} Approved & Released!`, { id: tId });
+                            }}
+                          >
+                            <CheckCircle size={18} color="var(--success)" />
+                          </button>
+                          
+                          <button 
+                            className="icon-btn text-danger cursor-pointer" 
+                            title="Reject" 
+                            onClick={async () => {
+                              const tId = toast.loading('Rejecting change order...');
+                              await updateKanbanStatus(ecn.id, 'rejected');
+                              toast.error(`${ecn.id} Rejected.`, { id: tId });
+                            }}
+                          >
+                            <XCircle size={18} color="var(--danger)" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!((kanbanData?.pending?.length || 0) + (kanbanData?.review?.length || 0)) && (
+                    <tr><td colSpan={6} className="text-center p-8 text-subtle">No ECNs require your approval at this time.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          )}
         </>
       )}
 

@@ -118,7 +118,7 @@ export default function FileManagement() {
         <label className="field-label m-0" style={{ flexShrink: 0 }}>Target Component:</label>
         <select className="field-input m-0" value={targetPart} onChange={e => setTargetPart(e.target.value)} style={{ padding: '8px 12px', width: 300 }}>
           <option value="">-- Choose Part Database Link --</option>
-          {partsList?.map(p => <option key={p.id} value={p.id}>{p.partNumber} - {p.name}</option>)}
+          {partsList?.map(p => <option key={p.id} value={p.id}>{p.partNumber} ({p.name})</option>)}
         </select>
       </div>
 
